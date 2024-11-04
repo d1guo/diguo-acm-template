@@ -66,3 +66,10 @@ pll max_flow(int s, int t, vector<vector<edge> > &e)
     while (spfa()) ans += dfs(s, LNF);
     return {ans, cost};
 }
+
+加边, c表示流量, w表示费用
+auto addedge = [&](int u, int v, ll c, ll w)
+{
+    e[u].pb({v, (int)e[v].size(), c, w});
+    e[v].pb({u, (int)e[u].size() - 1, 0, -w});
+};
