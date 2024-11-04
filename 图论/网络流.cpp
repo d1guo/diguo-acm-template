@@ -1,73 +1,71 @@
-const int GN = ;
-cnt初始为1
-int cnt = 1;
-int head[GN + 5], nxt[GN + 5], to[GN + 5], val[GN + 5];
-int dep[GN + 5], cur[GN + 5];
-int n;
-void addedge(int u, int v, int w)
+最大流,同时也是最小割
+
+
+如果需要记录最终每条边的流量, 需要在edge里加一项bool, 记录是否为正向边
+最终, 每条边流量是当前的c
+
+struct edge
 {
-    nxt[++cnt] = head[u];
-    head[u] = cnt;
-    to[cnt] = v;
-    val[cnt] = w;
-}
-bool bfs(int s, int t)
+    int v, rev;
+    ll c;
+};
+
+要传引用,否则复杂度会加个n
+INF和LNF别弄混了
+ll max_flow(int s, int t, vector<vector<edge> > &e)
 {
-    rep(i, 0, n + 1) dep[i] = INF, cur[i] = head[i];
-    queue<int> q;
-    dep[s] = 1;
-    q.push(s);
-    while (!q.empty())
+    int n = e.size();
+    vector<int> dep(n + 1);
+    vector<int> cur(n + 1);
+    function<bool()> bfs = [&]() -> bool
     {
-        int tp = q.front();
-        q.pop();
-        for (int i = head[tp]; i; i = nxt[i])
+        queue<int> q;
+        rep(i, 0, n) dep[i] = INF, cur[i] = 0;
+        q.push(s);
+        dep[s] = 1;
+        while (!q.empty())
         {
-            int u = to[i], w = val[i];
-            if (dep[u] == INF && w)
+            int u = q.front();
+            q.pop();
+            int m = e[u].size();
+            rep(i, 0, m - 1)
             {
-                dep[u] = dep[tp] + 1;
-                q.push(u);
+                auto [v, rev, c] = e[u][i];
+                if (dep[v] == INF && c)
+                {
+                    dep[v] = dep[u] + 1;
+                    q.push(v);
+                }
             }
         }
-    }
-    return (dep[t] != INF);
-}
-int dfs(int x, int flow, int t)
-{
-    if (x == t) return flow;
-    int rmn = flow;
-    for (int i = cur[x]; i && rmn; i = nxt[i])
+        return dep[t] != INF;
+    };
+    function<ll(int, ll)> dfs = [&](int u, ll flow) -> ll
     {
-        cur[x] = i;
-        int u = to[i], w = val[i];
-        if (!w || dep[u] != dep[x] + 1) continue;
-        int c = dfs(u, min(w, rmn), t);
-        val[i] -= c;
-        val[i ^ 1] += c;
-        rmn -= c;
-    }
-    return flow - rmn;
+        if (u == t) return flow;
+        ll now = flow;
+        int m = e[u].size();
+        for (int i = cur[u]; i < m && now; ++i)
+        {
+            auto [v, rev, c] = e[u][i];
+            if (!c || dep[v] != dep[u] + 1) continue;
+            cur[u] = i;
+            ll f = dfs(v, min(now, c));
+            e[u][i].c -= f;
+            e[v][rev].c += f;
+            now -= f;
+        }
+        return flow - now;
+    };
+    ll ans = 0;
+    while (bfs()) ans += dfs(s, LNF);
+    return ans;
 }
-ll dinic(int s, int t)
+
+加边函数在solve内写
+注意,反向边初始流量为0, 打完检查一遍,别打错了
+auto addedge = [&](int u, int v, ll c)
 {
-	ll ans = 0;
-	while (bfs(s, t)) ans += 1ll * dfs(s, INF, t);
-	return ans;
-}
-加边时候别忘连反向边
-u = read(), v = read();
-addedge(u, v, 1);
-addedge(v, u, 0);
-超级源点/汇点
-记得判断边的时候要看是不是连接超级源点/超级汇点的边，是的话就无视
-rep(i, 1, m)
-{
-    addedge(0, i, 1);
-    addedge(i, 0, 0);
-}
-rep(i, m + 1, n)
-{
-    addedge(i, n + 1, 1);
-    addedge(n + 1, i, 0);
-}
+    e[u].pb({v, (int)e[v].size(), c});
+    e[v].pb({u, (int)e[u].size() - 1, 0});
+};
